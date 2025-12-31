@@ -34,7 +34,7 @@ export default function Landing() {
               alt="TMLN"
               className="w-10 h-10 rounded-lg"
             />
-            <span className="text-2xl font-bold tracking-wide">TMLN</span>
+            <span className="text-2xl font-bold tracking-wide">TMLN Mobile</span>
           </div>
 
           <div className="flex items-center gap-3">
