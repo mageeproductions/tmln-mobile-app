@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/DashboardLayout';
-import { MessageSquare, Users } from 'lucide-react';
+import { MessageSquare, Users, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -26,28 +26,8 @@ export default function Messages() {
 
       const messagesChannel = supabase
         .channel('messages_updates')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'event_messages',
-          },
-          () => {
-            fetchEventChats();
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'message_read_receipts',
-          },
-          () => {
-            fetchEventChats();
-          }
-        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'event_messages' }, () => fetchEventChats())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'message_read_receipts' }, () => fetchEventChats())
         .subscribe();
 
       return () => {
@@ -61,16 +41,10 @@ export default function Messages() {
 
     setLoading(true);
 
-    const { data: memberEvents, error: eventsError } = await supabase
+    const { data: memberEvents } = await supabase
       .from('event_members')
       .select('event_id, events(id, event_name, event_date)')
       .eq('user_id', user.id);
-
-    if (eventsError) {
-      console.error('Error fetching events:', eventsError);
-      setLoading(false);
-      return;
-    }
 
     const chats: EventChat[] = [];
 
@@ -150,40 +124,37 @@ export default function Messages() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Messages</h1>
-          <p className="text-sm sm:text-base text-gray-600">Communicate with your team and vendors</p>
-        </div>
+    <DashboardLayout title="Messages">
+      <div className="min-h-screen bg-[#0A0A0A]">
+        <div className="safe-area-top" />
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-4 pt-4 pb-4">
           {loading ? (
-            <div className="p-8 sm:p-12 text-center text-gray-500">
-              Loading chats...
+            <div className="flex items-center justify-center py-20">
+              <div className="w-10 h-10 border-3 border-white/20 border-t-white rounded-full animate-spin" />
             </div>
           ) : eventChats.length === 0 ? (
-            <div className="p-8 sm:p-12">
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                  <MessageSquare className="w-8 h-8 text-purple-600" />
-                </div>
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No messages yet</h2>
-                <p className="text-sm sm:text-base text-gray-600">Join an event to start chatting with your team</p>
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                <MessageSquare className="w-10 h-10 text-white/30" />
               </div>
+              <h3 className="text-lg font-semibold text-white mb-2">No messages yet</h3>
+              <p className="text-white/50 text-center">Join an event to start chatting with your team</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
+            <div className="space-y-2">
               {eventChats.map((chat) => (
                 <button
                   key={chat.event_id}
                   onClick={() => navigate(`/dashboard/messages/${chat.event_id}`)}
-                  className="w-full p-4 sm:p-6 hover:bg-gray-50 transition text-left flex items-start gap-3 sm:gap-4"
+                  className="w-full flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-2xl text-left active:scale-[0.98] transition-transform"
                 >
-                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 relative">
-                    <Users className="w-6 h-6 text-purple-600" />
+                  <div className="relative">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                      <Users className="w-6 h-6 text-white" />
+                    </div>
                     {chat.unread_count > 0 && (
-                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                      <div className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 rounded-full flex items-center justify-center px-1">
                         <span className="text-white text-xs font-bold">
                           {chat.unread_count > 9 ? '9+' : chat.unread_count}
                         </span>
@@ -192,26 +163,20 @@ export default function Messages() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className={`text-sm truncate ${chat.unread_count > 0 ? 'font-bold text-gray-900' : 'font-semibold text-gray-900'}`}>
+                      <h3 className={`truncate pr-2 ${chat.unread_count > 0 ? 'font-bold text-white' : 'font-semibold text-white'}`}>
                         {chat.event_name}
                       </h3>
                       {chat.last_message_time && (
-                        <span className={`text-xs ml-2 flex-shrink-0 ${chat.unread_count > 0 ? 'text-purple-600 font-semibold' : 'text-gray-500'}`}>
+                        <span className={`text-xs flex-shrink-0 ${chat.unread_count > 0 ? 'text-white' : 'text-white/40'}`}>
                           {formatDate(chat.last_message_time)}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className={`text-sm truncate flex-1 ${chat.unread_count > 0 ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
-                        {chat.last_message || 'No messages yet'}
-                      </p>
-                      {chat.unread_count > 0 && (
-                        <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full flex-shrink-0">
-                          {chat.unread_count}
-                        </span>
-                      )}
-                    </div>
+                    <p className={`text-sm truncate ${chat.unread_count > 0 ? 'text-white/80 font-medium' : 'text-white/50'}`}>
+                      {chat.last_message || 'No messages yet'}
+                    </p>
                   </div>
+                  <ChevronRight className="w-5 h-5 text-white/30 flex-shrink-0" />
                 </button>
               ))}
             </div>

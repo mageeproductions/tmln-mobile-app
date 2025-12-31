@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import DashboardLayout from '../components/DashboardLayout';
-import { Bell, CreditCard, Shield, Crown, Check, X, LogOut } from 'lucide-react';
+import { Bell, CreditCard, Shield, Crown, Check, X, ChevronLeft } from 'lucide-react';
 import { stripeProducts, getProductByPriceId } from '../stripe-config';
 
 interface NotificationPreferences {
@@ -21,7 +21,7 @@ interface SubscriptionData {
 }
 
 export default function Settings() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState(false);
@@ -130,47 +130,48 @@ export default function Settings() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/login');
-  };
-
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="w-10 h-10 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+      <DashboardLayout hideTabBar>
+        <div className="min-h-screen bg-[#0A0A0A] flex items-center justify-center">
+          <div className="w-10 h-10 border-3 border-white/20 border-t-white rounded-full animate-spin" />
         </div>
       </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-4xl mx-auto px-6 py-8">
-            <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-            <p className="text-gray-500 mt-1">Manage your account preferences</p>
+    <DashboardLayout hideTabBar>
+      <div className="min-h-screen bg-[#0A0A0A]">
+        <header className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
+          <div className="safe-area-top" />
+          <div className="flex items-center gap-3 px-4 h-14">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-10 h-10 flex items-center justify-center -ml-2 active:opacity-70 transition-opacity"
+            >
+              <ChevronLeft className="w-6 h-6 text-white" />
+            </button>
+            <h1 className="text-lg font-semibold text-white">Settings</h1>
           </div>
-        </div>
+        </header>
 
-        <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-              <Bell className="w-5 h-5 text-gray-500" />
-              <h2 className="font-semibold text-gray-900">Notifications</h2>
+        <div className="px-4 py-6 space-y-6">
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
+              <Bell className="w-5 h-5 text-white/50" />
+              <h2 className="font-semibold text-white">Notifications</h2>
             </div>
-            <div className="divide-y divide-gray-100">
-              <div className="flex items-center justify-between px-6 py-4">
+            <div className="divide-y divide-white/5">
+              <div className="flex items-center justify-between px-4 py-4">
                 <div>
-                  <h3 className="text-gray-900 font-medium">Push Notifications</h3>
-                  <p className="text-gray-500 text-sm">Receive alerts on your device</p>
+                  <h3 className="text-white font-medium">Push Notifications</h3>
+                  <p className="text-white/50 text-sm">Receive alerts on your device</p>
                 </div>
                 <button
                   onClick={() => handleToggle('push')}
                   className={`w-12 h-7 rounded-full transition-colors relative ${
-                    preferences.push ? 'bg-purple-600' : 'bg-gray-200'
+                    preferences.push ? 'bg-green-500' : 'bg-white/10'
                   }`}
                 >
                   <div
@@ -180,15 +181,15 @@ export default function Settings() {
                   />
                 </button>
               </div>
-              <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center justify-between px-4 py-4">
                 <div>
-                  <h3 className="text-gray-900 font-medium">Email Notifications</h3>
-                  <p className="text-gray-500 text-sm">Get updates via email</p>
+                  <h3 className="text-white font-medium">Email Notifications</h3>
+                  <p className="text-white/50 text-sm">Get updates via email</p>
                 </div>
                 <button
                   onClick={() => handleToggle('email')}
                   className={`w-12 h-7 rounded-full transition-colors relative ${
-                    preferences.email ? 'bg-purple-600' : 'bg-gray-200'
+                    preferences.email ? 'bg-green-500' : 'bg-white/10'
                   }`}
                 >
                   <div
@@ -198,15 +199,15 @@ export default function Settings() {
                   />
                 </button>
               </div>
-              <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center justify-between px-4 py-4">
                 <div>
-                  <h3 className="text-gray-900 font-medium">Event Reminders</h3>
-                  <p className="text-gray-500 text-sm">Get reminded about events</p>
+                  <h3 className="text-white font-medium">Event Reminders</h3>
+                  <p className="text-white/50 text-sm">Get reminded about events</p>
                 </div>
                 <button
                   onClick={() => handleToggle('event_reminders')}
                   className={`w-12 h-7 rounded-full transition-colors relative ${
-                    preferences.event_reminders ? 'bg-purple-600' : 'bg-gray-200'
+                    preferences.event_reminders ? 'bg-green-500' : 'bg-white/10'
                   }`}
                 >
                   <div
@@ -216,15 +217,15 @@ export default function Settings() {
                   />
                 </button>
               </div>
-              <div className="flex items-center justify-between px-6 py-4">
+              <div className="flex items-center justify-between px-4 py-4">
                 <div>
-                  <h3 className="text-gray-900 font-medium">Messages</h3>
-                  <p className="text-gray-500 text-sm">New message alerts</p>
+                  <h3 className="text-white font-medium">Messages</h3>
+                  <p className="text-white/50 text-sm">New message alerts</p>
                 </div>
                 <button
                   onClick={() => handleToggle('message_notifications')}
                   className={`w-12 h-7 rounded-full transition-colors relative ${
-                    preferences.message_notifications ? 'bg-purple-600' : 'bg-gray-200'
+                    preferences.message_notifications ? 'bg-green-500' : 'bg-white/10'
                   }`}
                 >
                   <div
@@ -237,24 +238,24 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-              <CreditCard className="w-5 h-5 text-gray-500" />
-              <h2 className="font-semibold text-gray-900">Subscription</h2>
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
+              <CreditCard className="w-5 h-5 text-white/50" />
+              <h2 className="font-semibold text-white">Subscription</h2>
             </div>
-            <div className="p-6">
+            <div className="p-4">
               {isPro ? (
-                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-200">
+                <div className="bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-2xl p-4 border border-emerald-500/30">
                   <div className="flex items-center gap-2 mb-3">
-                    <Crown className="w-6 h-6 text-emerald-600" />
-                    <h3 className="text-xl font-bold text-gray-900">TMLN Pro</h3>
+                    <Crown className="w-6 h-6 text-emerald-400" />
+                    <h3 className="text-xl font-bold text-white">TMLN Pro</h3>
                   </div>
-                  <p className="text-gray-600 mb-4">You have access to all Pro features</p>
+                  <p className="text-white/70 mb-4">You have access to all Pro features</p>
 
                   {currentPriceData && (
-                    <div className="text-2xl font-bold text-gray-900 mb-4">
+                    <div className="text-2xl font-bold text-white mb-4">
                       ${currentPriceData.price.price_per_unit}
-                      <span className="text-sm font-normal text-gray-500">
+                      <span className="text-sm font-normal text-white/50">
                         /{currentPriceData.price.interval === 'month' ? 'mo' : 'yr'}
                       </span>
                     </div>
@@ -263,61 +264,61 @@ export default function Settings() {
                   <div className="space-y-2">
                     {['Unlimited Events', 'Unlimited Vendors', 'Advanced Timeline', 'Priority Support'].map((feature) => (
                       <div key={feature} className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        <span className="text-gray-700 text-sm">{feature}</span>
+                        <Check className="w-4 h-4 text-emerald-400" />
+                        <span className="text-white/80 text-sm">{feature}</span>
                       </div>
                     ))}
                   </div>
 
                   {subscription?.current_period_end && (
-                    <p className="text-gray-500 text-sm mt-4">
+                    <p className="text-white/50 text-sm mt-4">
                       {subscription.cancel_at_period_end ? 'Ends' : 'Renews'} {new Date(subscription.current_period_end * 1000).toLocaleDateString()}
                     </p>
                   )}
                 </div>
               ) : (
                 <>
-                  <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Free Plan</h3>
-                    <p className="text-gray-500 text-sm mb-4">Current plan</p>
+                  <div className="bg-white/5 rounded-2xl p-4 border border-white/10 mb-4">
+                    <h3 className="text-lg font-semibold text-white mb-1">Free Plan</h3>
+                    <p className="text-white/50 text-sm mb-4">Current plan</p>
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 text-sm">Up to 5 events</span>
+                        <Check className="w-4 h-4 text-white/40" />
+                        <span className="text-white/60 text-sm">Up to 5 events</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Check className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 text-sm">10 vendors per event</span>
+                        <Check className="w-4 h-4 text-white/40" />
+                        <span className="text-white/60 text-sm">10 vendors per event</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <X className="w-4 h-4 text-gray-300" />
-                        <span className="text-gray-400 text-sm">Advanced features</span>
+                        <X className="w-4 h-4 text-white/20" />
+                        <span className="text-white/30 text-sm">Advanced features</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6 border border-purple-200">
+                  <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-2xl p-4 border border-purple-500/30">
                     <div className="flex items-center gap-2 mb-2">
-                      <Crown className="w-5 h-5 text-amber-500" />
-                      <h3 className="font-bold text-gray-900">Upgrade to Pro</h3>
+                      <Crown className="w-5 h-5 text-amber-400" />
+                      <h3 className="font-bold text-white">Upgrade to Pro</h3>
                     </div>
-                    <p className="text-gray-600 text-sm mb-4">Unlock unlimited events and features</p>
+                    <p className="text-white/60 text-sm mb-4">Unlock unlimited events and features</p>
 
                     {proProduct && (
                       <>
-                        <div className="flex rounded-xl bg-white p-1 mb-4 border border-gray-200">
+                        <div className="flex rounded-xl bg-white/5 p-1 mb-4 border border-white/10">
                           <button
                             onClick={() => setBillingCycle('monthly')}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                              billingCycle === 'monthly' ? 'bg-gray-900 text-white' : 'text-gray-600'
+                            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${
+                              billingCycle === 'monthly' ? 'bg-white text-black' : 'text-white/60'
                             }`}
                           >
                             Monthly
                           </button>
                           <button
                             onClick={() => setBillingCycle('annual')}
-                            className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
-                              billingCycle === 'annual' ? 'bg-gray-900 text-white' : 'text-gray-600'
+                            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition ${
+                              billingCycle === 'annual' ? 'bg-white text-black' : 'text-white/60'
                             }`}
                           >
                             Annual (-17%)
@@ -325,18 +326,18 @@ export default function Settings() {
                         </div>
 
                         <div className="text-center mb-4">
-                          <span className="text-3xl font-bold text-gray-900">
+                          <span className="text-3xl font-bold text-white">
                             ${billingCycle === 'monthly'
                               ? proProduct.prices.find(p => p.interval === 'month')?.price_per_unit
                               : proProduct.prices.find(p => p.interval === 'year')?.price_per_unit}
                           </span>
-                          <span className="text-gray-500">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
+                          <span className="text-white/50">/{billingCycle === 'monthly' ? 'mo' : 'yr'}</span>
                         </div>
 
                         <button
                           onClick={handleUpgradeToPro}
                           disabled={upgrading}
-                          className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:from-purple-500 hover:to-pink-500 transition-all disabled:opacity-50"
+                          className="w-full py-3.5 bg-white text-black rounded-xl font-semibold active:scale-[0.98] transition-transform disabled:opacity-50"
                         >
                           {upgrading ? 'Processing...' : 'Upgrade Now'}
                         </button>
@@ -348,36 +349,29 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-              <Shield className="w-5 h-5 text-gray-500" />
-              <h2 className="font-semibold text-gray-900">Account</h2>
+          <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-white/5">
+              <Shield className="w-5 h-5 text-white/50" />
+              <h2 className="font-semibold text-white">Account</h2>
             </div>
-            <div className="divide-y divide-gray-100">
-              <div className="px-6 py-4">
-                <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Email</p>
-                <p className="text-gray-900">{user?.email}</p>
+            <div className="divide-y divide-white/5">
+              <div className="px-4 py-4">
+                <p className="text-white/40 text-xs uppercase tracking-wide mb-1">Email</p>
+                <p className="text-white">{user?.email}</p>
               </div>
-              <button className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors">
-                <span className="text-gray-500">Change Password</span>
-                <span className="text-gray-400 text-sm">Coming soon</span>
+              <button className="w-full flex items-center justify-between px-4 py-4 text-left active:bg-white/5 transition-colors">
+                <span className="text-white/60">Change Password</span>
+                <span className="text-white/30 text-sm">Coming soon</span>
               </button>
-              <button className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-gray-50 transition-colors">
-                <span className="text-gray-500">Two-Factor Auth</span>
-                <span className="text-gray-400 text-sm">Coming soon</span>
-              </button>
-              <button
-                onClick={handleSignOut}
-                className="w-full flex items-center gap-3 px-6 py-4 text-left hover:bg-red-50 transition-colors text-red-600"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="font-medium">Sign Out</span>
+              <button className="w-full flex items-center justify-between px-4 py-4 text-left active:bg-white/5 transition-colors">
+                <span className="text-white/60">Two-Factor Auth</span>
+                <span className="text-white/30 text-sm">Coming soon</span>
               </button>
             </div>
           </div>
 
-          <p className="text-center text-gray-400 text-xs">
-            TMLN v1.0.0
+          <p className="text-center text-white/30 text-xs pb-4">
+            TMLN Mobile v1.0.0
           </p>
         </div>
       </div>

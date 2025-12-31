@@ -1,11 +1,14 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Home, Users, MessageSquare, Settings, Mail, User, ChevronRight, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Home, Users, MessageSquare, Mail, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface DashboardLayoutProps {
   children: ReactNode;
+  title?: string;
+  rightAction?: ReactNode;
+  hideTabBar?: boolean;
 }
 
 interface Profile {
@@ -15,14 +18,18 @@ interface Profile {
   profile_photo_url: string;
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { user, signOut } = useAuth();
+export default function DashboardLayout({
+  children,
+  title,
+  rightAction,
+  hideTabBar = false
+}: DashboardLayoutProps) {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -154,25 +161,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     navigate(path);
   };
 
-  const navItems = [
-    { icon: Home, label: 'Events', path: '/dashboard' },
-    { icon: Users, label: 'Contacts', path: '/dashboard/contacts' },
-    { icon: Mail, label: 'Invites', path: '/dashboard/invites', badge: pendingInvitesCount },
-    { icon: MessageSquare, label: 'Messages', path: '/dashboard/messages', badge: unreadMessagesCount },
-  ];
-
-  const bottomNavItems = [
-    { icon: User, label: 'Profile', path: '/dashboard/profile' },
-    { icon: Settings, label: 'Settings', path: '/dashboard/settings' },
-  ];
-
-  const isNavActive = (path: string) => {
-    if (path === '/dashboard') {
-      return location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/events');
-    }
-    return location.pathname === path || location.pathname.startsWith(path + '/');
-  };
-
   const getInitials = () => {
     if (profile?.first_name && profile?.last_name) {
       return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase();
@@ -180,129 +168,91 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     return 'U';
   };
 
+  const tabItems = [
+    { icon: Home, label: 'Events', path: '/dashboard' },
+    { icon: Users, label: 'Contacts', path: '/dashboard/contacts' },
+    { icon: Mail, label: 'Invites', path: '/dashboard/invites', badge: pendingInvitesCount },
+    { icon: MessageSquare, label: 'Messages', path: '/dashboard/messages', badge: unreadMessagesCount },
+    { icon: User, label: 'Profile', path: '/dashboard/profile' },
+  ];
+
+  const isTabActive = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/events');
+    }
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-[#0f0f0f] flex flex-col transition-all duration-300 fixed h-screen z-20`}>
-        <div className={`border-b border-white/10 ${sidebarCollapsed ? 'p-4' : 'p-6'}`}>
-          {sidebarCollapsed ? (
-            <div className="flex flex-col items-center gap-3">
-              <img
-                src="/icon.png"
-                alt="TMLN"
-                className="w-10 h-10 flex-shrink-0"
-              />
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="text-gray-400 hover:text-white transition-colors"
-                title="Expand sidebar"
-              >
-                <PanelLeft className="w-5 h-5" />
-              </button>
-            </div>
-          ) : (
+    <div className="min-h-screen bg-[#0A0A0A] flex flex-col">
+      {title && (
+        <header className="fixed top-0 left-0 right-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/5">
+          <div className="safe-area-top" />
+          <div className="flex items-center justify-between px-4 h-14">
             <div className="flex items-center gap-3">
-              <img
-                src="/icon.png"
-                alt="TMLN"
-                className="w-10 h-10 flex-shrink-0"
-              />
-              <span className="text-white font-bold text-xl tracking-tight">TMLN</span>
-              <button
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                className="ml-auto text-gray-400 hover:text-white transition-colors"
-                title="Collapse sidebar"
-              >
-                <PanelLeftClose className="w-5 h-5" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const active = isNavActive(item.path);
-            return (
-              <button
-                key={item.label}
-                onClick={() => handleNavigation(item.path)}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-xl transition-all group relative ${
-                  active
-                    ? 'bg-white/10 text-white'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <div className="relative">
-                  <item.icon className={`w-5 h-5 ${active ? 'text-purple-400' : ''}`} />
-                  {item.badge !== undefined && item.badge > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                      {item.badge > 9 ? '9+' : item.badge}
-                    </span>
-                  )}
+              {profile?.profile_photo_url ? (
+                <img
+                  src={profile.profile_photo_url}
+                  alt="Profile"
+                  className="w-8 h-8 rounded-full object-cover"
+                  onClick={() => navigate('/dashboard/profile')}
+                />
+              ) : (
+                <div
+                  className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center cursor-pointer"
+                  onClick={() => navigate('/dashboard/profile')}
+                >
+                  <span className="text-white font-semibold text-xs">{getInitials()}</span>
                 </div>
-                {!sidebarCollapsed && (
-                  <>
-                    <span className="font-medium">{item.label}</span>
-                    {active && (
-                      <ChevronRight className="w-4 h-4 ml-auto text-purple-400" />
-                    )}
-                  </>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="p-4 space-y-1 border-t border-white/10">
-          {bottomNavItems.map((item) => {
-            const active = isNavActive(item.path);
-            return (
-              <button
-                key={item.label}
-                onClick={() => handleNavigation(item.path)}
-                className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-xl transition-all ${
-                  active
-                    ? 'bg-white/10 text-white'
-                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <item.icon className={`w-5 h-5 ${active ? 'text-purple-400' : ''}`} />
-                {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="p-4 border-t border-white/10">
-          <button
-            onClick={() => navigate('/dashboard/profile')}
-            className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'} p-3 rounded-xl hover:bg-white/5 transition-all`}
-          >
-            {profile?.profile_photo_url ? (
-              <img
-                src={profile.profile_photo_url}
-                alt="Profile"
-                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-              />
-            ) : (
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-white font-semibold text-sm">{getInitials()}</span>
+              )}
+              <h1 className="text-lg font-semibold text-white">{title}</h1>
+            </div>
+            {rightAction && (
+              <div className="flex items-center">
+                {rightAction}
               </div>
             )}
-            {!sidebarCollapsed && (
-              <div className="text-left min-w-0">
-                <p className="text-white font-medium truncate">
-                  {profile?.first_name} {profile?.last_name}
-                </p>
-                <p className="text-gray-500 text-sm truncate">{profile?.occupation || 'Event Professional'}</p>
-              </div>
-            )}
-          </button>
-        </div>
-      </aside>
+          </div>
+        </header>
+      )}
 
-      <main className={`flex-1 ${sidebarCollapsed ? 'ml-20' : 'ml-64'} transition-all duration-300`}>
+      <main className={`flex-1 ${title ? 'pt-14' : ''} ${!hideTabBar ? 'pb-20' : ''}`}>
+        <div className={title ? 'safe-area-top' : ''} />
         {children}
+        {!hideTabBar && <div className="h-safe" />}
       </main>
+
+      {!hideTabBar && (
+        <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-t border-white/5">
+          <div className="flex items-stretch justify-around">
+            {tabItems.map((item) => {
+              const active = isTabActive(item.path);
+              return (
+                <button
+                  key={item.label}
+                  onClick={() => handleNavigation(item.path)}
+                  className={`flex-1 flex flex-col items-center justify-center py-2 pt-3 transition-all active:scale-95 ${
+                    active ? 'text-white' : 'text-white/40'
+                  }`}
+                >
+                  <div className="relative">
+                    <item.icon className={`w-6 h-6 ${active ? 'text-white' : ''}`} strokeWidth={active ? 2.5 : 2} />
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                        {item.badge > 9 ? '9+' : item.badge}
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] mt-1 font-medium ${active ? 'text-white' : 'text-white/40'}`}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="safe-area-bottom bg-[#0A0A0A]" />
+        </nav>
+      )}
     </div>
   );
 }

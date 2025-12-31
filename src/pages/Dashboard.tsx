@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import DashboardLayout from '../components/DashboardLayout';
-import { Calendar, Plus, Search, UserPlus, PlusCircle, MoreVertical, Trash2, ChevronUp, ChevronDown, ArrowUpDown } from 'lucide-react';
+import { Calendar, Plus, Search, UserPlus, PlusCircle, MapPin, Clock, ChevronRight, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import CreateEventModal from '../components/CreateEventModal';
 import JoinEventModal from '../components/JoinEventModal';
 import EventLimitPaywall from '../components/EventLimitPaywall';
 
 type FilterCategory = 'all' | 'upcoming' | 'this-month' | 'completed';
-type SortField = 'name' | 'createdBy' | 'type' | 'date' | 'location';
-type SortDirection = 'asc' | 'desc';
 
 interface Event {
   id: string;
@@ -42,8 +40,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<FilterCategory>('all');
-  const [sortField, setSortField] = useState<SortField>('date');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [stats, setStats] = useState<EventStats>({
     total: 0,
     upcoming: 0,
@@ -55,21 +51,12 @@ export default function Dashboard() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showEventLimitPaywall, setShowEventLimitPaywall] = useState(false);
   const [currentEventCount, setCurrentEventCount] = useState(0);
-  const [openMenuEventId, setOpenMenuEventId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       fetchEvents();
     }
   }, [user]);
-
-  useEffect(() => {
-    const handleClickOutside = () => setOpenMenuEventId(null);
-    if (openMenuEventId) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [openMenuEventId]);
 
   const fetchEvents = async () => {
     if (!user) return;
@@ -146,28 +133,44 @@ export default function Dashboard() {
     return date.toLocaleDateString('en-US', {
       weekday: 'short',
       month: 'short',
-      day: 'numeric',
+      day: 'numeric'
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
       year: 'numeric'
     });
   };
 
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
+  const getDaysUntil = (dateString: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(dateString);
+    eventDate.setHours(0, 0, 0, 0);
+    const diffTime = eventDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
-  const filteredAndSortedEvents = events
+  const getEventStatus = (dateString: string) => {
+    const days = getDaysUntil(dateString);
+    if (days < 0) return { label: 'Completed', color: 'bg-gray-500' };
+    if (days === 0) return { label: 'Today', color: 'bg-green-500' };
+    if (days === 1) return { label: 'Tomorrow', color: 'bg-blue-500' };
+    if (days <= 7) return { label: `${days} days`, color: 'bg-blue-500' };
+    if (days <= 30) return { label: `${days} days`, color: 'bg-amber-500' };
+    return { label: `${days} days`, color: 'bg-gray-400' };
+  };
+
+  const filteredEvents = events
     .filter(event => {
       const matchesSearch =
         event.event_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.couple_name_1?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         event.couple_name_2?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.creator_name?.toLowerCase().includes(searchQuery.toLowerCase());
+        event.location?.toLowerCase().includes(searchQuery.toLowerCase());
 
       if (!matchesSearch) return false;
 
@@ -185,53 +188,7 @@ export default function Dashboard() {
 
       return true;
     })
-    .sort((a, b) => {
-      let compareResult = 0;
-
-      switch (sortField) {
-        case 'name':
-          compareResult = a.event_name.localeCompare(b.event_name);
-          break;
-        case 'createdBy':
-          compareResult = (a.creator_name || '').localeCompare(b.creator_name || '');
-          break;
-        case 'type':
-          compareResult = a.event_type.localeCompare(b.event_type);
-          break;
-        case 'date':
-          compareResult = new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
-          break;
-        case 'location':
-          compareResult = (a.location || '').localeCompare(b.location || '');
-          break;
-      }
-
-      return sortDirection === 'asc' ? compareResult : -compareResult;
-    });
-
-  const handleRemoveEvent = async (eventId: string, eventName: string) => {
-    if (!user) return;
-
-    const confirmed = window.confirm(
-      `Remove "${eventName}" from your dashboard?`
-    );
-
-    if (!confirmed) return;
-
-    const { error } = await supabase
-      .from('event_members')
-      .delete()
-      .eq('event_id', eventId)
-      .eq('user_id', user.id);
-
-    if (error) {
-      alert('Failed to remove event.');
-      return;
-    }
-
-    setOpenMenuEventId(null);
-    fetchEvents();
-  };
+    .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime());
 
   const handleEventLimitReached = (eventCount: number) => {
     setCurrentEventCount(eventCount);
@@ -271,229 +228,122 @@ export default function Dashboard() {
     }
   };
 
-  const handleEventClick = (eventId: string) => {
-    navigate(`/dashboard/events/${eventId}`);
-  };
-
   const filterOptions = [
-    { key: 'all', label: 'All Events', count: stats.total },
+    { key: 'all', label: 'All', count: stats.total },
     { key: 'upcoming', label: 'Upcoming', count: stats.upcoming },
     { key: 'this-month', label: 'This Month', count: stats.thisMonth },
     { key: 'completed', label: 'Past', count: stats.completed },
   ];
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="w-4 h-4 text-gray-400" />;
-    }
-    return sortDirection === 'asc'
-      ? <ChevronUp className="w-4 h-4 text-purple-600" />
-      : <ChevronDown className="w-4 h-4 text-purple-600" />;
-  };
-
   return (
-    <DashboardLayout>
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-6 py-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Events</h1>
-                <p className="text-gray-500 mt-1">Manage your upcoming events and timelines</p>
-              </div>
-              <button
-                onClick={() => setShowActionSheet(true)}
-                className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-lg shadow-purple-500/25"
-              >
-                <Plus className="w-5 h-5" />
-                New Event
-              </button>
-            </div>
+    <DashboardLayout
+      title="Events"
+      rightAction={
+        <button
+          onClick={() => setShowActionSheet(true)}
+          className="w-10 h-10 bg-white rounded-full flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <Plus className="w-5 h-5 text-black" />
+        </button>
+      }
+    >
+      <div className="min-h-screen bg-[#0A0A0A]">
+        <div className="safe-area-top" />
+
+        <div className="px-4 pt-4 pb-2">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
+            <input
+              type="text"
+              placeholder="Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-white/40 focus:border-white/20 focus:outline-none transition-all"
+            />
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search events..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none transition-all"
-              />
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {filterOptions.map((filter) => (
-                <button
-                  key={filter.key}
-                  onClick={() => setSelectedFilter(filter.key as FilterCategory)}
-                  className={`flex-shrink-0 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                    selectedFilter === filter.key
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {filter.label}
-                  <span className={`ml-2 ${selectedFilter === filter.key ? 'text-white/70' : 'text-gray-400'}`}>
-                    {filter.count}
-                  </span>
-                </button>
-              ))}
-            </div>
+        <div className="px-4 py-3">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+            {filterOptions.map((filter) => (
+              <button
+                key={filter.key}
+                onClick={() => setSelectedFilter(filter.key as FilterCategory)}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-95 ${
+                  selectedFilter === filter.key
+                    ? 'bg-white text-black'
+                    : 'bg-white/5 text-white/60 border border-white/10'
+                }`}
+              >
+                {filter.label}
+                <span className={`ml-1.5 ${selectedFilter === filter.key ? 'text-black/50' : 'text-white/30'}`}>
+                  {filter.count}
+                </span>
+              </button>
+            ))}
           </div>
+        </div>
 
+        <div className="px-4 pb-4">
           {loading ? (
             <div className="flex items-center justify-center py-20">
-              <div className="w-10 h-10 border-3 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+              <div className="w-10 h-10 border-3 border-white/20 border-t-white rounded-full animate-spin" />
             </div>
-          ) : filteredAndSortedEvents.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-gray-400" />
+          ) : filteredEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-4">
+                <Calendar className="w-10 h-10 text-white/30" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No events found</h3>
-              <p className="text-gray-500 mb-6">Create your first event to get started</p>
+              <h3 className="text-lg font-semibold text-white mb-2">No events yet</h3>
+              <p className="text-white/50 text-center mb-6">Create your first event or join one with a code</p>
               <button
                 onClick={() => setShowActionSheet(true)}
-                className="inline-flex items-center gap-2 px-5 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors"
+                className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full font-medium active:scale-95 transition-transform"
               >
                 <Plus className="w-5 h-5" />
-                Create Event
+                Add Event
               </button>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="text-left px-6 py-4">
-                        <button
-                          onClick={() => handleSort('name')}
-                          className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
-                        >
-                          Project Name
-                          <SortIcon field="name" />
-                        </button>
-                      </th>
-                      <th className="text-left px-6 py-4">
-                        <button
-                          onClick={() => handleSort('createdBy')}
-                          className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
-                        >
-                          Created By
-                          <SortIcon field="createdBy" />
-                        </button>
-                      </th>
-                      <th className="text-left px-6 py-4">
-                        <button
-                          onClick={() => handleSort('type')}
-                          className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
-                        >
-                          Type
-                          <SortIcon field="type" />
-                        </button>
-                      </th>
-                      <th className="text-left px-6 py-4">
-                        <button
-                          onClick={() => handleSort('date')}
-                          className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
-                        >
-                          Date
-                          <SortIcon field="date" />
-                        </button>
-                      </th>
-                      <th className="text-left px-6 py-4">
-                        <button
-                          onClick={() => handleSort('location')}
-                          className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-700 transition-colors"
-                        >
-                          Location
-                          <SortIcon field="location" />
-                        </button>
-                      </th>
-                      <th className="px-6 py-4"></th>
-                      <th className="w-12 px-6 py-4"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {filteredAndSortedEvents.map((event) => (
-                      <tr
-                        key={event.id}
-                        onClick={() => handleEventClick(event.id)}
-                        className="hover:bg-gray-50 transition-colors cursor-pointer"
-                      >
-                        <td className="px-6 py-4">
-                          <span className="text-gray-900 font-medium hover:text-purple-600 transition-colors">
-                            {event.event_name}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-gray-600">
-                            {event.creator_name || '-'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-gray-600 capitalize">
-                            {event.event_type}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-gray-600 whitespace-nowrap">
-                            {formatDate(event.event_date)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-gray-600 max-w-xs truncate block">
-                            {event.location || '-'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/dashboard/events/${event.id}/timeline`);
-                            }}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors whitespace-nowrap"
-                          >
-                            View Timeline
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenuEventId(openMenuEventId === event.id ? null : event.id);
-                            }}
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          >
-                            <MoreVertical className="w-5 h-5" />
-                          </button>
-                          {openMenuEventId === event.id && (
-                            <div
-                              className="absolute right-6 top-12 w-48 bg-white rounded-xl shadow-xl border border-gray-200 py-1 z-20"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveEvent(event.id, event.event_name);
-                                }}
-                                className="w-full px-4 py-3 text-left hover:bg-red-50 transition flex items-center gap-3 text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                <span className="text-sm font-medium">Remove</span>
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-3">
+              {filteredEvents.map((event) => {
+                const status = getEventStatus(event.event_date);
+                return (
+                  <button
+                    key={event.id}
+                    onClick={() => navigate(`/dashboard/events/${event.id}`)}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-left active:scale-[0.98] transition-transform"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-lg truncate pr-4">
+                          {event.event_name}
+                        </h3>
+                        <p className="text-white/50 text-sm capitalize">{event.event_type}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`${status.color} text-white text-xs font-medium px-2.5 py-1 rounded-full`}>
+                          {status.label}
+                        </span>
+                        <ChevronRight className="w-5 h-5 text-white/30" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-white/60">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm">{formatDate(event.event_date)}, {formatTime(event.event_date)}</span>
+                      </div>
+                      {event.location && (
+                        <div className="flex items-center gap-2 text-white/60">
+                          <MapPin className="w-4 h-4" />
+                          <span className="text-sm truncate">{event.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -501,56 +351,61 @@ export default function Dashboard() {
 
       {showActionSheet && (
         <div className="fixed inset-0 z-50" onClick={() => setShowActionSheet(false)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-          <div className="absolute inset-0 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute inset-x-0 bottom-0 animate-slide-up">
             <div
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="bg-[#1A1A1A] rounded-t-3xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-xl font-semibold text-gray-900">Add Event</h2>
-                <p className="text-gray-500 text-sm mt-1">Create a new event or join an existing one</p>
-              </div>
-              <div className="p-4 space-y-3">
-                <button
-                  onClick={() => {
-                    setShowActionSheet(false);
-                    setShowCreateModal(true);
-                  }}
-                  className="w-full flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
-                    <PlusCircle className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold text-gray-900">Create New Event</p>
-                    <p className="text-gray-500 text-sm">Start planning a new event</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowActionSheet(false);
-                    setShowJoinModal(true);
-                  }}
-                  className="w-full flex items-center gap-4 p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center">
-                    <UserPlus className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-semibold text-gray-900">Join with Code</p>
-                    <p className="text-gray-500 text-sm">Enter a 6-digit invite code</p>
-                  </div>
-                </button>
-              </div>
-              <div className="p-4 border-t border-gray-100">
+              <div className="w-12 h-1 bg-white/20 rounded-full mx-auto mt-3" />
+              <div className="p-6 pt-4">
+                <h2 className="text-xl font-semibold text-white mb-1">Add Event</h2>
+                <p className="text-white/50 text-sm mb-6">Create a new event or join an existing one</p>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setShowActionSheet(false);
+                      setShowCreateModal(true);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 bg-white/5 rounded-2xl active:scale-[0.98] transition-transform"
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                      <PlusCircle className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <p className="font-semibold text-white">Create New Event</p>
+                      <p className="text-white/50 text-sm">Start planning a new event</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-white/30" />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowActionSheet(false);
+                      setShowJoinModal(true);
+                    }}
+                    className="w-full flex items-center gap-4 p-4 bg-white/5 rounded-2xl active:scale-[0.98] transition-transform"
+                  >
+                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                      <UserPlus className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="text-left flex-1">
+                      <p className="font-semibold text-white">Join with Code</p>
+                      <p className="text-white/50 text-sm">Enter a 6-digit invite code</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-white/30" />
+                  </button>
+                </div>
+
                 <button
                   onClick={() => setShowActionSheet(false)}
-                  className="w-full py-3 text-gray-500 font-medium hover:text-gray-700 transition-colors"
+                  className="w-full py-4 mt-4 text-white/50 font-medium active:text-white/70 transition-colors"
                 >
                   Cancel
                 </button>
               </div>
+              <div className="safe-area-bottom bg-[#1A1A1A]" />
             </div>
           </div>
         </div>
